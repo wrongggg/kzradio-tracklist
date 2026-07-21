@@ -105,9 +105,16 @@ def process():
     file.save(save_path)
     
     try:
-        clean_tracks, raw_logs = asyncio.run(process_file(save_path, interval_min, snippet_sec, max_retries))
+        # Safe asyncio execution across different server environments
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        clean_tracks, raw_logs = loop.run_until_complete(
+            process_file(save_path, interval_min, snippet_sec, max_retries)
+        )
+        loop.close()
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        print(f"Processing Exception: {e}")
+        return jsonify({"error": f"Audio Error: {str(e)}"}), 500
     finally:
         if os.path.exists(save_path):
             os.remove(save_path)

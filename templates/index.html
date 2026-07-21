@@ -343,7 +343,7 @@
                 cleanOut.value = data.clean_tracklist;
                 logOut.value = data.logs;
             } else {
-                alert("Error processing audio file.");
+                const errData = JSON.parse(xhr.responseText); alert("Error: " + (errData.error || xhr.statusText));
             }
         });
 
