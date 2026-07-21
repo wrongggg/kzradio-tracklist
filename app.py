@@ -2,10 +2,10 @@ import asyncio
 import os
 import ssl
 import subprocess
-import json
 import traceback
 from flask import Flask, render_template, request, jsonify
 from shazamio import Shazam
+from mutagen import File as MutagenFile
 
 try:
     import certifi
@@ -21,18 +21,14 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 os.makedirs(TEMP_FOLDER, exist_ok=True)
 
 def get_audio_duration(file_path):
-    """ Get exact duration in seconds without loading audio to RAM """
-    cmd = [
-        "ffprobe", "-v", "error",
-        "-show_entries", "format=duration",
-        "-of", "default=noprint_wrappers=1:nokey=1",
-        file_path
-    ]
-    result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-    return float(result.stdout.strip())
+    """ Get exact duration in seconds via mutagen (no ffprobe required) """
+    audio = MutagenFile(file_path)
+    if audio is not None and audio.info is not None:
+        return float(audio.info.length)
+    raise ValueError("Could not read audio duration from file.")
 
 def extract_snippet(file_path, start_sec, duration_sec, output_path):
-    """ Fast direct disk slice via FFmpeg (uses almost 0 RAM) """
+    """ Fast direct disk slice via FFmpeg """
     cmd = [
         "ffmpeg", "-y",
         "-ss", str(start_sec),
