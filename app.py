@@ -1,6 +1,7 @@
 import asyncio
 import os
 import ssl
+import traceback
 from flask import Flask, render_template, request, jsonify
 from pydub import AudioSegment
 from shazamio import Shazam
@@ -19,6 +20,7 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 os.makedirs(TEMP_FOLDER, exist_ok=True)
 
 async def process_file(file_path, interval_min, snippet_sec, max_retries):
+    # Load audio metadata first
     audio = AudioSegment.from_file(file_path)
     shazam = Shazam()
     
@@ -91,11 +93,11 @@ def index():
 @app.route("/process", methods=["POST"])
 def process():
     if "audio_file" not in request.files:
-        return jsonify({"error": "No file uploaded"}), 400
+        return jsonify({"error": "לא נבחר קובץ"}), 400
         
     file = request.files["audio_file"]
     if file.filename == "":
-        return jsonify({"error": "No file selected"}), 400
+        return jsonify({"error": "קובץ רֵיק"}), 400
         
     interval_min = float(request.form.get("interval", 1.5))
     snippet_sec = int(request.form.get("snippet", 25))
@@ -105,7 +107,6 @@ def process():
     file.save(save_path)
     
     try:
-        # Safe asyncio execution across different server environments
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
         clean_tracks, raw_logs = loop.run_until_complete(
@@ -113,8 +114,10 @@ def process():
         )
         loop.close()
     except Exception as e:
-        print(f"Processing Exception: {e}")
-        return jsonify({"error": f"Audio Error: {str(e)}"}), 500
+        err_msg = str(e)
+        print(f"Processing Error: {err_msg}")
+        traceback.print_exc()
+        return jsonify({"error": f"שגיאה בעבוד הקובץ: {err_msg}"}), 500
     finally:
         if os.path.exists(save_path):
             os.remove(save_path)
