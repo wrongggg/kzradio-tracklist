@@ -10,7 +10,6 @@ from shazamio import Shazam
 from mutagen import File as MutagenFile
 import static_ffmpeg
 
-# Auto-add static ffmpeg binaries to PATH
 static_ffmpeg.add_paths()
 
 try:
@@ -26,18 +25,15 @@ TEMP_FOLDER = "/tmp/radio_temp_snippets"
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 os.makedirs(TEMP_FOLDER, exist_ok=True)
 
-# In-memory storage for background jobs
 JOBS = {}
 
 def get_audio_duration(file_path):
-    """ Get exact duration in seconds via mutagen """
     audio = MutagenFile(file_path)
     if audio is not None and audio.info is not None:
         return float(audio.info.length)
     raise ValueError("Could not read audio duration from file.")
 
 def extract_snippet(file_path, start_sec, duration_sec, output_path):
-    """ Fast direct disk slice via FFmpeg static binary """
     cmd = [
         "ffmpeg", "-y",
         "-ss", str(start_sec),
@@ -47,6 +43,29 @@ def extract_snippet(file_path, start_sec, duration_sec, output_path):
         output_path
     ]
     subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+async def recognize_snippet(shazam, file_path, sample_sec, snippet_sec, total_duration_sec, offset_sec, job_id):
+    actual_start = sample_sec + offset_sec
+    if actual_start + snippet_sec > total_duration_sec:
+        return None, offset_sec
+
+    snippet_path = os.path.join(TEMP_FOLDER, f"snippet_{job_id}_{actual_start}.mp3")
+    extract_snippet(file_path, actual_start, snippet_sec, snippet_path)
+
+    try:
+        out = await shazam.recognize(snippet_path)
+        track = out.get("track")
+        if track:
+            title = track.get("title", "Unknown Title")
+            artist = track.get("subtitle", "Unknown Artist")
+            return f"{artist} - {title}", offset_sec
+    except Exception:
+        pass
+    finally:
+        if os.path.exists(snippet_path):
+            os.remove(snippet_path)
+
+    return None, offset_sec
 
 async def async_process_file(job_id, file_path, interval_min, snippet_sec, max_retries):
     try:
@@ -73,33 +92,23 @@ async def async_process_file(job_id, file_path, interval_min, snippet_sec, max_r
             hours = current_sec // 3600
             timestamp = f"{hours:02d}:{minutes:02d}:{seconds:02d}"
             
-            track_info = None
-            matched_offset_sec = 0
             offsets_to_try = [0] + [15 * (r + 1) for r in range(max_retries)]
             
-            for offset_sec in offsets_to_try:
-                sample_sec = current_sec + offset_sec
-                if sample_sec + snippet_sec > total_duration_sec:
+            # Fire main sample + retry offsets in parallel
+            tasks = [
+                recognize_snippet(shazam, file_path, current_sec, snippet_sec, total_duration_sec, off, job_id)
+                for off in offsets_to_try
+            ]
+            results = await asyncio.gather(*tasks)
+            
+            track_info = None
+            matched_offset_sec = 0
+            for info, off in results:
+                if info:
+                    track_info = info
+                    matched_offset_sec = off
                     break
                     
-                snippet_path = os.path.join(TEMP_FOLDER, f"snippet_{job_id}_{sample_sec}.mp3")
-                extract_snippet(file_path, sample_sec, snippet_sec, snippet_path)
-                
-                try:
-                    out = await shazam.recognize(snippet_path)
-                    track = out.get("track")
-                    if track:
-                        title = track.get("title", "Unknown Title")
-                        artist = track.get("subtitle", "Unknown Artist")
-                        track_info = f"{artist} - {title}"
-                        matched_offset_sec = offset_sec
-                        break
-                except Exception:
-                    pass
-                finally:
-                    if os.path.exists(snippet_path):
-                        os.remove(snippet_path)
-                        
             if track_info:
                 last_seen = recent_tracks.get(track_info)
                 retry_tag = f" (offset +{matched_offset_sec}s)" if matched_offset_sec > 0 else ""
@@ -147,7 +156,7 @@ def process():
     if file.filename == "":
         return jsonify({"error": "קובץ רֵיק"}), 400
         
-    interval_min = float(request.form.get("interval", 1.5))
+    interval_min = float(request.form.get("interval", 2.5))
     snippet_sec = int(request.form.get("snippet", 25))
     max_retries = int(request.form.get("retries", 2))
     

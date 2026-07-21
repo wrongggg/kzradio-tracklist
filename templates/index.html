@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>הקצה | מחולל רשימות השמעה</title>
+    <title>הקצה | Tracklist Generator</title>
     <style>
         :root {
             --bg-black: #000000;
@@ -264,7 +264,7 @@
 <div class="container">
     <div class="brand-header">
         <h1 class="brand-logo-text">הקצה</h1>
-        <div class="brand-tag">מחולל רשימות השמעה / Tracklist Generator</div>
+        <div class="brand-tag">Tracklist Generator</div>
     </div>
 
     <form id="uploadForm">
@@ -278,7 +278,7 @@
             <div class="settings-grid">
                 <div>
                     <label>מרווח סריקה (דקות)</label>
-                    <input type="number" name="interval" value="1.5" step="0.5" min="0.5">
+                    <input type="number" name="interval" value="2.5" step="0.5" min="0.5">
                 </div>
                 <div>
                     <label>אורך דגימה (שניות)</label>
@@ -307,15 +307,15 @@
     </div>
 
     <div class="output-section">
-        <label>Tracklist הנקי (Artist - Title)</label>
-        <textarea id="cleanOutput" readonly placeholder="הרשימה הנקייה תופיע כאן..."></textarea>
-        <button class="btn-secondary" onclick="copyCleanTracklist()">העתק רשימה נקייה</button>
+        <label>Tracklist</label>
+        <textarea id="cleanOutput" readonly></textarea>
+        <button class="btn-secondary" onclick="copyCleanTracklist()">העתק טראקליסט</button>
     </div>
 
     <details class="log-details">
         <summary>📋 הצג יומן סריקה מלא (Full Logs)</summary>
         <div style="margin-top: 12px;">
-            <textarea id="logOutput" readonly placeholder="לוג הסריקה המלא יופיע כאן..." style="height: 140px; color: var(--text-muted);"></textarea>
+            <textarea id="logOutput" readonly style="height: 140px; color: var(--text-muted);"></textarea>
         </div>
     </details>
 </div>
@@ -368,7 +368,6 @@
                 processingIndicator.style.display = "flex";
                 scanStatusText.innerText = "מתחיל סריקת Shazam... (0%)";
 
-                // Poll job status every 2.5 seconds
                 pollInterval = setInterval(() => {
                     fetch(`/status/${jobId}`)
                         .then(res => res.json())
