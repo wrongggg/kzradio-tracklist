@@ -159,7 +159,7 @@
             cursor: not-allowed;
         }
 
-        /* Upload Progress Bar */
+        /* Progress Bar */
         .progress-box {
             display: none;
             margin-top: 25px;
@@ -179,7 +179,7 @@
             width: 0%;
             height: 100%;
             background: var(--kz-red);
-            transition: width 0.2s ease;
+            transition: width 0.3s ease;
         }
 
         /* Processing Spinner Animation */
@@ -239,7 +239,7 @@
             border-color: var(--kz-red);
         }
 
-        /* Hidden Log Details Link Styling */
+        /* Hidden Log Details */
         .log-details {
             margin-top: 25px;
             background: transparent;
@@ -303,7 +303,7 @@
 
     <div class="processing-indicator" id="processingIndicator">
         <div class="spinner"></div>
-        <span>מזהה שירים דרך Shazam... יוצר את הטרקליסט (לוקח כ-1-2 דקות לתוכנית מלאה).</span>
+        <span id="scanStatusText">מזהה שירים דרך Shazam... בתהליך סריקה (0%)</span>
     </div>
 
     <div class="output-section">
@@ -321,6 +321,8 @@
 </div>
 
 <script>
+    let pollInterval = null;
+
     document.getElementById("uploadForm").addEventListener("submit", function(e) {
         e.preventDefault();
         
@@ -332,9 +334,12 @@
         const progressFill = document.getElementById("progressFill");
         const uploadStatusText = document.getElementById("uploadStatusText");
         const processingIndicator = document.getElementById("processingIndicator");
+        const scanStatusText = document.getElementById("scanStatusText");
         const cleanOut = document.getElementById("cleanOutput");
         const logOut = document.getElementById("logOutput");
         
+        if (pollInterval) clearInterval(pollInterval);
+
         btn.disabled = true;
         cleanOut.value = "";
         logOut.value = "";
@@ -351,31 +356,45 @@
                 const percent = Math.round((e.loaded / e.total) * 100);
                 progressFill.style.width = percent + "%";
                 uploadStatusText.innerText = `מעלה קובץ: ${percent}%`;
-                
-                if (percent === 100) {
-                    setTimeout(() => {
-                        progressBox.style.display = "none";
-                        processingIndicator.style.display = "flex";
-                    }, 500);
-                }
             }
         });
 
         xhr.addEventListener("load", function() {
-            processingIndicator.style.display = "none";
-            btn.disabled = false;
-
             if (xhr.status === 200) {
                 const data = JSON.parse(xhr.responseText);
-                cleanOut.value = data.clean_tracklist;
-                logOut.value = data.logs;
+                const jobId = data.job_id;
+                
+                progressBox.style.display = "none";
+                processingIndicator.style.display = "flex";
+                scanStatusText.innerText = "מתחיל סריקת Shazam... (0%)";
+
+                // Poll job status every 2.5 seconds
+                pollInterval = setInterval(() => {
+                    fetch(`/status/${jobId}`)
+                        .then(res => res.json())
+                        .then(job => {
+                            if (job.status === "processing") {
+                                scanStatusText.innerText = `מזהה שירים דרך Shazam... סורק: ${job.progress}%`;
+                            } else if (job.status === "completed") {
+                                clearInterval(pollInterval);
+                                processingIndicator.style.display = "none";
+                                btn.disabled = false;
+                                cleanOut.value = job.clean_tracklist;
+                                logOut.value = job.logs;
+                            } else if (job.status === "failed") {
+                                clearInterval(pollInterval);
+                                processingIndicator.style.display = "none";
+                                btn.disabled = false;
+                                alert("שגיאה בסריקה: " + job.error);
+                            }
+                        })
+                        .catch(() => {});
+                }, 2500);
+
             } else {
-                try {
-                    const errData = JSON.parse(xhr.responseText);
-                    alert("שגיאה: " + (errData.error || xhr.statusText));
-                } catch(e) {
-                    alert("שגיאה בעיבוד הקובץ בשרת.");
-                }
+                processingIndicator.style.display = "none";
+                btn.disabled = false;
+                alert("שגיאה בהעלאת הקובץ לשרת.");
             }
         });
 
