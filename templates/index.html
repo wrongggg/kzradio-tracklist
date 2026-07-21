@@ -24,6 +24,8 @@
             padding: 30px 20px;
             display: flex;
             justify-content: center;
+            text-align: right;
+            direction: rtl;
         }
 
         .container {
@@ -78,6 +80,7 @@
             font-size: 14px;
             color: var(--text-muted);
             letter-spacing: 0.5px;
+            text-align: right;
         }
 
         input[type="file"], input[type="number"] {
@@ -89,7 +92,18 @@
             color: var(--text-white);
             box-sizing: border-box;
             font-size: 14px;
-            direction: ltr;
+            text-align: right;
+            direction: rtl;
+        }
+
+        input[type="file"]::file-selector-button {
+            background: var(--border-color);
+            color: var(--text-white);
+            border: none;
+            padding: 6px 12px;
+            border-radius: 4px;
+            margin-left: 10px;
+            cursor: pointer;
         }
 
         input[type="file"]:focus, input[type="number"]:focus {
@@ -112,6 +126,7 @@
             color: var(--text-white);
             user-select: none;
             font-size: 14px;
+            text-align: right;
         }
 
         .settings-grid {
@@ -195,7 +210,7 @@
 
         textarea {
             width: 100%;
-            height: 200px;
+            height: 220px;
             background: var(--input-bg);
             color: var(--text-white);
             border: 1px solid var(--border-color);
@@ -207,6 +222,7 @@
             box-sizing: border-box;
             resize: vertical;
             direction: ltr;
+            text-align: left;
         }
 
         .btn-secondary {
@@ -222,12 +238,30 @@
             background: #333333;
             border-color: var(--kz-red);
         }
+
+        /* Hidden Log Details Link Styling */
+        .log-details {
+            margin-top: 25px;
+            background: transparent;
+            border: none;
+            padding: 0;
+        }
+
+        .log-details summary {
+            color: var(--text-muted);
+            font-size: 13px;
+            font-weight: 600;
+            text-decoration: underline;
+        }
+
+        .log-details summary:hover {
+            color: var(--text-white);
+        }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <!-- Authentic KZradio Logo Header -->
     <div class="brand-header">
         <h1 class="brand-logo-text">הקצה</h1>
         <div class="brand-tag">מחולל רשימות השמעה / Tracklist Generator</div>
@@ -239,7 +273,6 @@
             <input type="file" id="fileInput" name="audio_file" accept="audio/*" required>
         </div>
 
-        <!-- Collapsible Advanced Settings -->
         <details>
             <summary>⚙️ הגדרות סריקה מתקדמות</summary>
             <div class="settings-grid">
@@ -261,7 +294,6 @@
         <button type="submit" id="submitBtn">צור רשימת השמעה</button>
     </form>
 
-    <!-- Real-time Upload Progress -->
     <div class="progress-box" id="progressBox">
         <label id="uploadStatusText" style="font-size:13px; font-weight:700;">מעלה קובץ: 0%</label>
         <div class="progress-track">
@@ -269,7 +301,6 @@
         </div>
     </div>
 
-    <!-- Generating Indicator -->
     <div class="processing-indicator" id="processingIndicator">
         <div class="spinner"></div>
         <span>מזהה שירים דרך Shazam... יוצר את הטרקליסט (לוקח כ-1-2 דקות לתוכנית מלאה).</span>
@@ -281,10 +312,12 @@
         <button class="btn-secondary" onclick="copyCleanTracklist()">העתק רשימה נקייה</button>
     </div>
 
-    <div class="output-section">
-        <label>יומן סריקה מלא (Full Logs)</label>
-        <textarea id="logOutput" readonly placeholder="לוג הסריקה המלא יופיע כאן..." style="height: 110px; color: var(--text-muted);"></textarea>
-    </div>
+    <details class="log-details">
+        <summary>📋 הצג יומן סריקה מלא (Full Logs)</summary>
+        <div style="margin-top: 12px;">
+            <textarea id="logOutput" readonly placeholder="לוג הסריקה המלא יופיע כאן..." style="height: 140px; color: var(--text-muted);"></textarea>
+        </div>
+    </details>
 </div>
 
 <script>
