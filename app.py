@@ -6,6 +6,10 @@ import traceback
 from flask import Flask, render_template, request, jsonify
 from shazamio import Shazam
 from mutagen import File as MutagenFile
+import static_ffmpeg
+
+# Auto-add static ffmpeg binaries to PATH
+static_ffmpeg.add_paths()
 
 try:
     import certifi
@@ -21,14 +25,14 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 os.makedirs(TEMP_FOLDER, exist_ok=True)
 
 def get_audio_duration(file_path):
-    """ Get exact duration in seconds via mutagen (no ffprobe required) """
+    """ Get exact duration in seconds via mutagen """
     audio = MutagenFile(file_path)
     if audio is not None and audio.info is not None:
         return float(audio.info.length)
     raise ValueError("Could not read audio duration from file.")
 
 def extract_snippet(file_path, start_sec, duration_sec, output_path):
-    """ Fast direct disk slice via FFmpeg """
+    """ Fast direct disk slice via FFmpeg static binary """
     cmd = [
         "ffmpeg", "-y",
         "-ss", str(start_sec),
