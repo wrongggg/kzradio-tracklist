@@ -1,0 +1,6 @@
+Flask==3.0.0
+pydub==0.25.1
+shazamio==0.5.1
+certifi
+werkzeug
+gunicorn
