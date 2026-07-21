@@ -1,5 +1,2 @@
 [phases.setup]
 nixPkgs = ["ffmpeg"]
-
-[start]
-cmd = "gunicorn app:app"
